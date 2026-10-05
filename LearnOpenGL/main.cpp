@@ -1,7 +1,11 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+
+#include "Shader.h"
+
 #include <iostream>
 using namespace std;
+
 
 //回调函数:每当窗口大小被调整的时候，视口也应该被调整
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -43,6 +47,56 @@ int main() {
 		return -1;
 	}
 
+
+	//定义并编译着色器项目
+	Shader myShader("3.3.shader.vs", "3.3.shader.fs");
+
+	//定义顶点数据
+	float vertices[] = {
+		// 位置              // 颜色
+		 0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,   // 右下
+		-0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,   // 左下
+		 0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f    // 顶部
+	};
+	unsigned int indices[] = {  // 注意索引从0开始!
+		0, 1, 3,   // 第一个三角形
+		1, 2, 3    // 第二个三角形
+	};
+
+	//生成缓冲对象
+	unsigned int VBO; //顶点缓冲对象(Vertex Buffer Object)：在显存中存顶点数据
+	unsigned int VAO; //顶点数组对象(Vertex Array Object)：记录顶点属性如何从 VBO 读取，不存数据本身
+	unsigned int EBO; //索引缓冲对象(Element Buffer Object)：在显存中存索引数据
+	glGenVertexArrays(1, &VAO);
+	glGenBuffers(1, &VBO);//生成一个缓冲ID
+	glGenBuffers(1, &EBO);//生成一个索引缓冲ID
+	//参数：生成几个对象，生成的ID写到哪个数组里
+
+	//1.绑定VAO
+	glBindVertexArray(VAO); //使后面的顶点属性配置和缓冲绑定都储存在这个VAO中
+
+	//2.复制 顶点数组 和 索引数据 到缓冲中供OpenGL使用
+	glBindBuffer(GL_ARRAY_BUFFER, VBO); //绑定缓冲对象
+	//把VBO绑定到GL_ARRAY_BUFFER目标上，GL_ARRAY_BUFFER这个缓冲区就是用来存储顶点数据的
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); //把顶点数据复制到缓冲中
+	//显卡如何管理给定的数据：GL_STATIC_DRAW:数据不会或几乎不会改变、
+	// GL_DYNAMIC_DRAW:数据会被改变很多次、 GL_STREAM_DRAW:数据每次绘制时都会改变
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO); //绑定索引缓冲对象
+	//把EBO绑定到GL_ELEMENT_ARRAY_BUFFER目标上，GL_ELEMENT_ARRAY_BUFFER这个缓冲区就是用来存储索引数据的
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW); //把索引数据复制到缓冲中
+	//EBO是绑在VAO上的，VBO通过glVertexAttribPointer函数设置顶点属性指针，VAO记录VBO的绑定状态
+
+	//3.设置顶点属性指针
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+	//参数说明：属性位置、每个属性的组件数量、数据类型、是否标准化、步长、偏移量
+	glEnableVertexAttribArray(0); //启用顶点属性指针
+	glEnableVertexAttribArray(1); //启用颜色属性指针
+	//VAO会记录VBO的绑定状态和顶点属性指针的配置，所以只要绑定了VAO，就不需要再绑定VBO和设置顶点属性指针了
+
+	glBindVertexArray(0);//解绑VAO：防止后续操作意外修改了VAO的配置
+
+
 	//渲染循环:一直运行，直到用户关闭窗口
 	while (!glfwWindowShouldClose(window)) {
 		//输入
@@ -52,12 +106,28 @@ int main() {
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f); //设置清空屏幕所用的颜色
 		glClear(GL_COLOR_BUFFER_BIT); //清除颜色缓冲
 
+		//4.调用着色器程序对象
+		myShader.use(); //使用着色器程序对象
+		myShader.setFloat("xOffset", 0.0f); //设置uniform变量
+
+		glBindVertexArray(VAO);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); //线条模式
+		glDrawArrays(GL_TRIANGLES, 0, 3); //绘制三角形
+		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //绘制两个三角形
+		////参数：图元类型、索引数量、索引类型、索引偏移量
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);//填充模式
+
 		//交换缓冲区和轮询IO事件
 		glfwSwapBuffers(window); //交换颜色缓冲：在显示器（即缓冲区）中显示
 		glfwPollEvents(); //检查有没有触发什么事件（比如键盘输入、鼠标移动等）、更新窗口状态，并调用对应的回调函数
 	}
 
 	//释放/删除之前的分配的所有资源
+	glDeleteVertexArrays(1, &VAO);
+	glDeleteBuffers(1, &VBO);
+	glDeleteBuffers(1, &EBO);
+	glDeleteProgram(myShader.ID);
+
 	glfwTerminate();
 
 	return 0;
