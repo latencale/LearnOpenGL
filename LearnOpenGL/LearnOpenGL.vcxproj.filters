@@ -13,10 +13,14 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="依赖项">
+      <UniqueIdentifier>{B3F27A19-4C58-4E0D-9A63-7D1E5C0B8F42}</UniqueIdentifier>
+      <Extensions>h;c;lib</Extensions>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="D:\glad\src\glad.c">
-      <Filter>源文件</Filter>
+    <ClCompile Include="..\vendor\src\glad.c">
+      <Filter>依赖项</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
@@ -24,14 +28,27 @@
     <ClCompile Include="Shader.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="stb_image.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="..\vendor\include\stb_image.h">
+      <Filter>依赖项</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="3.3.shader.vs" />
-    <None Include="3.3.shader.fs" />
+    <None Include="shader.vs">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="shader.fs">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="resources\textures\container.jpg">
+      <Filter>资源文件</Filter>
+    </None>
   </ItemGroup>
 </Project>

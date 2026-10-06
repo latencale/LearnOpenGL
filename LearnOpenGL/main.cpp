@@ -1,5 +1,6 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <stb_image.h>
 
 #include "Shader.h"
 
@@ -49,18 +50,24 @@ int main() {
 
 
 	//定义并编译着色器项目
-	Shader myShader("3.3.shader.vs", "3.3.shader.fs");
+	Shader myShader("shader.vs", "shader.fs");
 
 	//定义顶点数据
 	float vertices[] = {
-		// 位置              // 颜色
-		 0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,   // 右下
-		-0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,   // 左下
-		 0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f    // 顶部
+		//     ---- 位置 ----       ---- 颜色 ----     - 纹理坐标 -
+			 0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // 右上
+			 0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // 右下
+			-0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // 左下
+			-0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // 左上
 	};
 	unsigned int indices[] = {  // 注意索引从0开始!
 		0, 1, 3,   // 第一个三角形
 		1, 2, 3    // 第二个三角形
+	};
+	float texCoords[] = {
+		0.0f, 0.0f, // 左下角
+		1.0f, 0.0f, // 右下角
+		0.5f, 1.0f  // 上中
 	};
 
 	//生成缓冲对象
@@ -87,15 +94,64 @@ int main() {
 	//EBO是绑在VAO上的，VBO通过glVertexAttribPointer函数设置顶点属性指针，VAO记录VBO的绑定状态
 
 	//3.设置顶点属性指针
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
 	//参数说明：属性位置、每个属性的组件数量、数据类型、是否标准化、步长、偏移量
 	glEnableVertexAttribArray(0); //启用顶点属性指针
 	glEnableVertexAttribArray(1); //启用颜色属性指针
+	glEnableVertexAttribArray(2); //启用纹理坐标属性指针
 	//VAO会记录VBO的绑定状态和顶点属性指针的配置，所以只要绑定了VAO，就不需要再绑定VBO和设置顶点属性指针了
-
 	glBindVertexArray(0);//解绑VAO：防止后续操作意外修改了VAO的配置
 
+	//创建纹理
+	unsigned int texture1,texture2;
+	glGenTextures(1, &texture1);
+	glBindTexture(GL_TEXTURE_2D, texture1);
+	// 为当前绑定的纹理对象设置环绕、过滤方式
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);//纹理环绕方式
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);//纹理过滤
+	// 加载并生成纹理
+	int width, height, nrChannels;//颜色通道个数
+	stbi_set_flip_vertically_on_load(true);//翻转y轴：openGL要求y轴0.0在图片底部，但是图片的0.0通常在顶部
+	unsigned char* data = stbi_load("resources/textures/container.jpg", &width, &height, &nrChannels, 0);
+	if (data)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		//生成纹理，参数：target，mipmap层级，纹理存储成格式，宽，高，0，纹理是何种格式，数据类型，图像数据
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+	{
+		std::cout << "Failed to load texture" << std::endl;
+	}
+	stbi_image_free(data);//释放内存
+
+	glGenTextures(1, &texture2);
+	glBindTexture(GL_TEXTURE_2D, texture2);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);//纹理环绕方式
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);//纹理过滤
+	data = stbi_load("resources/textures/awesomeface.png", &width, &height, &nrChannels, 0);
+	if (data)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		//生成纹理，参数：target，mipmap层级，纹理存储成格式，宽，高，0，纹理是何种格式，数据类型，图像数据
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+	{
+		std::cout << "Failed to load texture" << std::endl;
+	}
+	stbi_image_free(data);
+
+	myShader.use(); //uniform变量之前激活着色器程序
+	//告诉着色器去哪个texture unit 取纹理
+	glUniform1i(glGetUniformLocation(myShader.ID, "texture1"), 0);//手动设置
+	myShader.setInt("texture2", 1); //或着色器类设置
 
 	//渲染循环:一直运行，直到用户关闭窗口
 	while (!glfwWindowShouldClose(window)) {
@@ -106,14 +162,21 @@ int main() {
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f); //设置清空屏幕所用的颜色
 		glClear(GL_COLOR_BUFFER_BIT); //清除颜色缓冲
 
+		//在对应的纹理单元（即sampler）绑定纹理
+		glActiveTexture(GL_TEXTURE0); //激活纹理单元0
+		glBindTexture(GL_TEXTURE_2D, texture1);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, texture2);
+
+
 		//4.调用着色器程序对象
 		myShader.use(); //使用着色器程序对象
 		myShader.setFloat("xOffset", 0.0f); //设置uniform变量
 
 		glBindVertexArray(VAO);
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); //线条模式
-		glDrawArrays(GL_TRIANGLES, 0, 3); //绘制三角形
-		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //绘制两个三角形
+		//glDrawArrays(GL_TRIANGLES, 0, 3); //绘制三角形
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //绘制两个三角形
 		////参数：图元类型、索引数量、索引类型、索引偏移量
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);//填充模式
 
