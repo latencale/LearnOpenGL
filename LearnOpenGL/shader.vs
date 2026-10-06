@@ -6,11 +6,12 @@ layout (location = 2) in vec2 aTexCoord;
 
 out vec3 myColor;
 out vec2 TexCoord;
-uniform float xOffset = 0.0f;
+
+uniform mat4 transform;
 
 void main()
 {
-	gl_Position = vec4(aPos + vec3(xOffset, 0.0f, 0.0f), 1.0);
+	gl_Position = transform * vec4(aPos , 1.0);
 	myColor = aColor;
 	TexCoord = aTexCoord;
 }

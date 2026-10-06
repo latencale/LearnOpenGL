@@ -1,12 +1,16 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <stb_image.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "Shader.h"
 
 #include <iostream>
 using namespace std;
 
+float mixValue = 0.2f;
 
 //回调函数:每当窗口大小被调整的时候，视口也应该被调整
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -18,6 +22,14 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 void processInput(GLFWwindow* window) {
 	if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
 		glfwSetWindowShouldClose(window, true);
+	}
+	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+		mixValue += 0.001f;
+		if (mixValue > 1.0f) mixValue = 1.0f;
+	}
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+		mixValue -= 0.001f;
+		if (mixValue < 0.0f) mixValue = 0.0f;
 	}
 }
 
@@ -109,10 +121,10 @@ int main() {
 	glGenTextures(1, &texture1);
 	glBindTexture(GL_TEXTURE_2D, texture1);
 	// 为当前绑定的纹理对象设置环绕、过滤方式
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);//纹理环绕方式
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);//纹理过滤
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);//纹理环绕方式
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//纹理过滤
 	// 加载并生成纹理
 	int width, height, nrChannels;//颜色通道个数
 	stbi_set_flip_vertically_on_load(true);//翻转y轴：openGL要求y轴0.0在图片底部，但是图片的0.0通常在顶部
@@ -125,7 +137,7 @@ int main() {
 	}
 	else
 	{
-		std::cout << "Failed to load texture" << std::endl;
+		std::cout << "Failed to load texture1" << std::endl;
 	}
 	stbi_image_free(data);//释放内存
 
@@ -133,8 +145,8 @@ int main() {
 	glBindTexture(GL_TEXTURE_2D, texture2);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);//纹理环绕方式
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);//纹理过滤
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//纹理过滤
 	data = stbi_load("resources/textures/awesomeface.png", &width, &height, &nrChannels, 0);
 	if (data)
 	{
@@ -144,7 +156,7 @@ int main() {
 	}
 	else
 	{
-		std::cout << "Failed to load texture" << std::endl;
+		std::cout << "Failed to load texture2" << std::endl;
 	}
 	stbi_image_free(data);
 
@@ -152,6 +164,8 @@ int main() {
 	//告诉着色器去哪个texture unit 取纹理
 	glUniform1i(glGetUniformLocation(myShader.ID, "texture1"), 0);//手动设置
 	myShader.setInt("texture2", 1); //或着色器类设置
+	myShader.setFloat("mixValue", mixValue);
+
 
 	//渲染循环:一直运行，直到用户关闭窗口
 	while (!glfwWindowShouldClose(window)) {
@@ -167,18 +181,31 @@ int main() {
 		glBindTexture(GL_TEXTURE_2D, texture1);
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, texture2);
+		myShader.setFloat("mixValue", mixValue);
 
-
+		//变换
+		glm::mat4 trans = glm::mat4(1.0f);
+		trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));//平移
+		trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));//旋转
+		//trans = glm::scale(trans, glm::vec3(0.5f, 0.5f, 0.5f));//放缩
+		
 		//4.调用着色器程序对象
 		myShader.use(); //使用着色器程序对象
-		myShader.setFloat("xOffset", 0.0f); //设置uniform变量
+		unsigned int transformLoc = glGetUniformLocation(myShader.ID, "transform");
+		glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+		//变量：uniform, 矩阵数量，是否转置，矩阵数据
 
 		glBindVertexArray(VAO);
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); //线条模式
-		//glDrawArrays(GL_TRIANGLES, 0, 3); //绘制三角形
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //绘制两个三角形
 		////参数：图元类型、索引数量、索引类型、索引偏移量
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);//填充模式
+
+		trans = glm::mat2(1.0f);
+		trans = glm::translate(trans, glm::vec3(-0.5f, 0.5f, 0.0f));//平移		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //绘制两个三角形
+		float scaleAmount = static_cast<float>(sin(glfwGetTime()));
+		trans = glm::scale(trans, glm::vec3(scaleAmount, scaleAmount, scaleAmount));
+		glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //绘制两个三角形
+
 
 		//交换缓冲区和轮询IO事件
 		glfwSwapBuffers(window); //交换颜色缓冲：在显示器（即缓冲区）中显示
